@@ -1,30 +1,24 @@
 <?php
 include 'db.php';
 
-// Kunin ang entry base sa ID
-$id = isset($_GET['id']) ? $_GET['id'] : null;
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if (!$id) {
     header('Location: index.php');
     exit;
 }
 
-$stmt = $conn->prepare("SELECT * FROM entries WHERE id = ?");
-$stmt->execute([$id]);
-$entry = $stmt->fetch(PDO::FETCH_ASSOC);
-
+$entry = db_get_by_id($id);
 if (!$entry) {
     die("Entry not found.");
 }
 
-// Logic para sa Update
+// Handle Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = $_POST['title'];
-    $content = $_POST['content'];
-    $mood = $_POST['mood'];
+    $title   = trim($_POST['title']);
+    $content = trim($_POST['content']);
+    $mood    = trim($_POST['mood']);
 
-    $stmt = $conn->prepare("UPDATE entries SET title = ?, content = ?, mood = ? WHERE id = ?");
-    $stmt->execute([$title, $content, $mood, $id]);
-
+    db_update($id, $title, $content, $mood);
     header('Location: index.php');
     exit;
 }
@@ -34,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Memory | Flower Glass</title>
+    <title>Edit Memory | MyJournal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
@@ -65,137 +59,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background-color: var(--bg-color);
             color: var(--text-main);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
             transition: all 0.4s ease;
-            position: relative;
-            overflow-x: hidden;
+            position: relative; overflow-x: hidden;
         }
 
-        /* Flower Background Decorations (Same as index) */
         body::before {
-            content: '✿'; 
-            position: fixed; top: -50px; right: -20px;
+            content: '✿'; position: fixed; top: -50px; right: -20px;
             font-size: 350px; opacity: 0.05; z-index: -1;
             pointer-events: none; color: var(--accent);
         }
-
         body::after {
-            content: '❀';
-            position: fixed; bottom: -30px; left: -30px;
+            content: '❀'; position: fixed; bottom: -30px; left: -30px;
             font-size: 250px; opacity: 0.04; z-index: -1;
             pointer-events: none; color: var(--accent);
         }
 
         header {
-            padding: 0 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 70px;
-            border-bottom: 1px solid var(--glass-border);
-            backdrop-filter: blur(15px);
+            padding: 0 2rem; display: flex; align-items: center;
+            justify-content: space-between; height: 70px;
+            border-bottom: 1px solid var(--glass-border); backdrop-filter: blur(15px);
         }
 
-        .logo {
-            font-family: 'Playfair Display', serif;
-            font-style: italic;
-            font-size: 1.6rem;
-            color: var(--text-main);
-            text-decoration: none;
-        }
+        .logo { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.6rem; color: var(--text-main); text-decoration: none; }
         .logo span { color: var(--accent); }
 
-        main {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
+        main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; }
 
         .edit-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 2.5rem;
-            width: 100%;
-            max-width: 600px;
+            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-radius: 20px;
+            padding: 2.5rem; width: 100%; max-width: 600px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.05);
         }
 
-        .form-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 2rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
+        .form-title { font-family: 'Playfair Display', serif; font-size: 2rem; margin-bottom: 1.5rem; text-align: center; }
 
         .form-group { margin-bottom: 1.5rem; }
 
-        label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            color: var(--text-muted);
-        }
+        label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-muted); }
 
         input, textarea, select {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            background: var(--input-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px;
-            color: var(--text-main);
-            font-family: inherit;
-            outline: none;
-            transition: 0.3s;
+            width: 100%; padding: 0.8rem 1rem; background: var(--input-bg);
+            border: 1px solid var(--glass-border); border-radius: 10px;
+            color: var(--text-main); font-family: inherit; outline: none; transition: 0.3s;
         }
-
         input:focus, textarea:focus { border-color: var(--accent); }
-
         textarea { height: 150px; resize: none; line-height: 1.6; }
 
-        .actions {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
+        .actions { display: flex; gap: 1rem; margin-top: 2rem; }
 
         .btn-update {
-            flex: 2;
-            background: linear-gradient(135deg, var(--accent), #d35400);
-            color: #fff;
-            border: none;
-            padding: 1rem;
-            border-radius: 10px;
-            font-weight: 700;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: 0.3s;
+            flex: 2; background: linear-gradient(135deg, var(--accent), #d35400); color: #fff;
+            border: none; padding: 1rem; border-radius: 10px; font-weight: 700;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s;
         }
         .btn-update:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(230, 126, 34, 0.3); }
 
         .btn-cancel {
-            flex: 1;
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            transition: 0.3s;
+            flex: 1; background: transparent; border: 1px solid var(--glass-border);
+            color: var(--text-main); text-decoration: none;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 10px; font-size: 0.8rem; font-weight: 500; transition: 0.3s;
         }
         .btn-cancel:hover { background: rgba(255,255,255,0.2); }
-
     </style>
 </head>
 <body id="body">
@@ -212,11 +139,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
                 <label>How's the mood?</label>
                 <select name="mood">
-                    <option value="Happy" <?= $entry['mood'] == 'Happy' ? 'selected' : '' ?>>😊 Happy</option>
-                    <option value="Sad" <?= $entry['mood'] == 'Sad' ? 'selected' : '' ?>>😢 Sad</option>
-                    <option value="Angry" <?= $entry['mood'] == 'Angry' ? 'selected' : '' ?>>😠 Angry</option>
-                    <option value="Calm" <?= $entry['mood'] == 'Calm' ? 'selected' : '' ?>>😌 Calm</option>
-                    <option value="Excited" <?= $entry['mood'] == 'Excited' ? 'selected' : '' ?>>🤩 Excited</option>
+                    <option value="happy"   <?= $entry['mood'] === 'happy'   ? 'selected' : '' ?>>😊 Happy</option>
+                    <option value="sad"     <?= $entry['mood'] === 'sad'     ? 'selected' : '' ?>>😔 Sad</option>
+                    <option value="angry"   <?= $entry['mood'] === 'angry'   ? 'selected' : '' ?>>😠 Angry</option>
+                    <option value="tired"   <?= $entry['mood'] === 'tired'   ? 'selected' : '' ?>>😴 Tired</option>
+                    <option value="excited" <?= $entry['mood'] === 'excited' ? 'selected' : '' ?>>🤩 Excited</option>
+                    <option value="anxious" <?= $entry['mood'] === 'anxious' ? 'selected' : '' ?>>😰 Anxious</option>
+                    <!-- Legacy moods from old SQLite data -->
+                    <option value="Happy"   <?= $entry['mood'] === 'Happy'   ? 'selected' : '' ?>>😊 Happy (old)</option>
+                    <option value="Sad"     <?= $entry['mood'] === 'Sad'     ? 'selected' : '' ?>>😢 Sad (old)</option>
+                    <option value="Angry"   <?= $entry['mood'] === 'Angry'   ? 'selected' : '' ?>>😠 Angry (old)</option>
+                    <option value="Calm"    <?= $entry['mood'] === 'Calm'    ? 'selected' : '' ?>>😌 Calm (old)</option>
+                    <option value="Excited" <?= $entry['mood'] === 'Excited' ? 'selected' : '' ?>>🤩 Excited (old)</option>
                 </select>
             </div>
 
@@ -239,7 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </main>
 
 <script>
-    // Sundin ang theme mula sa index
     if (localStorage.getItem('theme') === 'dark') {
         document.getElementById('body').classList.add('dark-mode');
     }

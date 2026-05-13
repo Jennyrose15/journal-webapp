@@ -2,43 +2,42 @@
 include 'db.php';
 
 // Search + fetch entries
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-if ($search !== '') {
-    $stmt = $conn->prepare("SELECT id, title, content, mood, created_at FROM entries WHERE title LIKE ? OR content LIKE ? ORDER BY created_at DESC");
-    $like = '%' . $search . '%';
-    $stmt->execute([$like, $like]);
-} else {
-    $stmt = $conn->query("SELECT id, title, content, mood, created_at FROM entries ORDER BY created_at DESC");
-}
-$entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$search  = isset($_GET['search']) ? trim($_GET['search']) : '';
+$entries = db_get_all($search);
 
-// Helper function para sa Mood Emojis
+// Helper: Mood Emojis
 function getMoodEmoji($mood) {
     $moods = [
-        'Happy' => '😊', 
-        'Sad' => '😢', 
-        'Angry' => '😠', 
-        'Calm' => '😌', 
-        'Excited' => '🤩'
+        'Happy'   => '😊',
+        'Sad'     => '😢',
+        'Angry'   => '😠',
+        'Calm'    => '😌',
+        'Excited' => '🤩',
+        'happy'   => '😊',
+        'sad'     => '😔',
+        'angry'   => '😠',
+        'tired'   => '😴',
+        'excited' => '🤩',
+        'anxious' => '😰',
     ];
-    return isset($moods[$mood]) ? $moods[$mood] : '📝';
+    return $moods[$mood] ?? '📝';
 }
 
-// Helper function para sa Time Ago (IBINALIK KO NA ITO)
+// Helper: Time Ago
 function timeAgo($timestamp) {
-    $time_ago = strtotime($timestamp);
-    $current_time = time();
+    $time_ago        = strtotime($timestamp);
+    $current_time    = time();
     $time_difference = $current_time - $time_ago;
-    $seconds = $time_difference;
-    
-    $minutes      = round($seconds / 60);           
-    $hours        = round($seconds / 3600);         
-    $days         = round($seconds / 86400);        
+    $seconds         = $time_difference;
+
+    $minutes = round($seconds / 60);
+    $hours   = round($seconds / 3600);
+    $days    = round($seconds / 86400);
 
     if ($seconds <= 60) return "Just now";
     if ($minutes <= 60) return ($minutes == 1) ? "1 minute ago" : "$minutes minutes ago";
-    if ($hours <= 24) return ($hours == 1) ? "1 hour ago" : "$hours hours ago";
-    if ($days <= 7) return ($days == 1) ? "Yesterday" : "$days days ago";
+    if ($hours   <= 24) return ($hours   == 1) ? "1 hour ago"   : "$hours hours ago";
+    if ($days    <= 7)  return ($days    == 1) ? "Yesterday"    : "$days days ago";
     return date('M d, Y', $time_ago);
 }
 ?>
@@ -192,7 +191,7 @@ function timeAgo($timestamp) {
                 <div class="entry-card">
                     <div class="card-header-meta">
                         <span><?= timeAgo($entry['created_at']) ?></span>
-                        <span class="mood-badge"><?= getMoodEmoji($entry['mood']) ?> <?= htmlspecialchars($entry['mood']) ?></span>
+                        <span class="mood-badge"><?= getMoodEmoji($entry['mood']) ?> <?= htmlspecialchars(ucfirst($entry['mood'])) ?></span>
                     </div>
                     
                     <h2 class="card-title"><?= htmlspecialchars($entry['title']) ?></h2>
@@ -216,7 +215,7 @@ function timeAgo($timestamp) {
 <script>
     function toggleMode() {
         const body = document.getElementById('body');
-        const btn = document.getElementById('modeBtn');
+        const btn  = document.getElementById('modeBtn');
         body.classList.toggle('light-mode');
         btn.innerHTML = body.classList.contains('light-mode') ? "☀️ Light" : "🌙 Mode";
         localStorage.setItem('theme', body.classList.contains('light-mode') ? 'light' : 'dark');

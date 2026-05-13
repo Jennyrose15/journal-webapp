@@ -15,9 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $content = trim($_POST['content']);
     $mood    = isset($moods[$_POST['mood']]) ? $_POST['mood'] : 'happy';
 
-    // SQLite: CURRENT_TIMESTAMP 
-    $stmt = $conn->prepare("INSERT INTO entries (title, content, mood) VALUES (?, ?, ?)");
-    if ($stmt->execute([$title, $content, $mood])) {
+    $new_id = db_insert($title, $content, $mood);
+
+    if ($new_id) {
         header("Location: index.php");
         exit();
     } else {
@@ -72,7 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transition: background .3s, color .3s;
         }
 
-        /* ── Header ── */
         header {
             background: var(--header-bg);
             padding: 0 2rem;
@@ -80,247 +79,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
             justify-content: space-between;
             height: 64px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            position: sticky; top: 0; z-index: 100;
             box-shadow: 0 2px 14px rgba(0,0,0,.35);
             transition: background .3s;
         }
 
-        .logo {
-            font-family: 'Playfair Display', serif;
-            font-style: italic;
-            font-size: 1.5rem;
-            color: #fff;
-            text-decoration: none;
-            letter-spacing: .02em;
-        }
+        .logo { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.5rem; color: #fff; text-decoration: none; letter-spacing: .02em; }
         .logo span { color: var(--accent); }
 
         .header-right { display: flex; align-items: center; gap: 1rem; }
 
         .theme-toggle {
-            position: relative;
-            width: 56px; height: 28px;
-            background: rgba(255,255,255,.12);
-            border: 1px solid rgba(255,255,255,.18);
-            border-radius: 14px;
-            cursor: pointer;
-            flex-shrink: 0;
-            transition: background .3s;
+            position: relative; width: 56px; height: 28px;
+            background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+            border-radius: 14px; cursor: pointer; flex-shrink: 0; transition: background .3s;
         }
         .theme-toggle::after {
-            content: '';
-            position: absolute;
-            top: 3px; left: 3px;
-            width: 22px; height: 22px;
-            border-radius: 50%;
-            background: #fff;
-            transition: transform .3s, background .3s;
+            content: ''; position: absolute; top: 3px; left: 3px;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: #fff; transition: transform .3s, background .3s;
         }
-        [data-theme="dark"] .theme-toggle::after {
-            transform: translateX(28px);
-            background: var(--accent);
-        }
-        .toggle-icon {
-            position: absolute;
-            top: 50%; transform: translateY(-50%);
-            font-size: .72rem;
-            pointer-events: none;
-            line-height: 1;
-        }
+        [data-theme="dark"] .theme-toggle::after { transform: translateX(28px); background: var(--accent); }
+        .toggle-icon { position: absolute; top: 50%; transform: translateY(-50%); font-size: .72rem; pointer-events: none; line-height: 1; }
         .toggle-sun  { left: 6px; }
         .toggle-moon { right: 5px; }
 
         .back-link {
-            color: #bbb;
-            text-decoration: none;
-            font-size: .82rem;
-            font-weight: 500;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-            gap: .4rem;
-            transition: color .2s;
+            color: #bbb; text-decoration: none; font-size: .82rem; font-weight: 500;
+            letter-spacing: .06em; text-transform: uppercase;
+            display: flex; align-items: center; gap: .4rem; transition: color .2s;
         }
         .back-link:hover { color: #fff; }
 
-        /* ── Main ── */
-        main {
-            max-width: 680px;
-            margin: 0 auto;
-            padding: 3rem 1.5rem 5rem;
-            animation: fadeUp .38s ease both;
-        }
+        main { max-width: 680px; margin: 0 auto; padding: 3rem 1.5rem 5rem; animation: fadeUp .38s ease both; }
 
         @keyframes fadeUp {
             from { opacity: 0; transform: translateY(16px); }
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        .breadcrumb {
-            font-size: .78rem;
-            color: var(--muted);
-            margin-bottom: 1.8rem;
-            display: flex;
-            align-items: center;
-            gap: .4rem;
-        }
+        .breadcrumb { font-size: .78rem; color: var(--muted); margin-bottom: 1.8rem; display: flex; align-items: center; gap: .4rem; }
         .breadcrumb a { color: var(--muted); text-decoration: none; }
         .breadcrumb a:hover { color: var(--ink); }
 
-        /* ── Card ── */
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 24px var(--shadow);
-            transition: background .3s, border-color .3s;
-        }
-        .card-top-bar {
-            height: 4px;
-            background: linear-gradient(90deg, var(--accent), var(--gold));
-        }
+        .card { background: var(--card-bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 24px var(--shadow); transition: background .3s, border-color .3s; }
+        .card-top-bar { height: 4px; background: linear-gradient(90deg, var(--accent), var(--gold)); }
         .card-inner { padding: 2.2rem 2.4rem 2rem; }
 
-        .form-heading {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.7rem;
-            font-weight: 700;
-            margin-bottom: .3rem;
-        }
-        .form-sub {
-            font-size: .85rem;
-            color: var(--muted);
-            margin-bottom: 1.8rem;
-        }
+        .form-heading { font-family: 'Playfair Display', serif; font-size: 1.7rem; font-weight: 700; margin-bottom: .3rem; }
+        .form-sub { font-size: .85rem; color: var(--muted); margin-bottom: 1.8rem; }
 
-        .divider {
-            border: none;
-            border-top: 1px solid var(--line);
-            margin: 0 0 1.8rem;
-            transition: border-color .3s;
-        }
+        .divider { border: none; border-top: 1px solid var(--line); margin: 0 0 1.8rem; transition: border-color .3s; }
 
-        /* ── Error ── */
         .alert-error {
-            background: rgba(192,57,43,.08);
-            border: 1px solid rgba(192,57,43,.25);
-            border-radius: 5px;
-            padding: .8rem 1rem;
-            font-size: .88rem;
-            color: var(--accent);
-            margin-bottom: 1.4rem;
-            display: flex;
-            align-items: center;
-            gap: .5rem;
+            background: rgba(192,57,43,.08); border: 1px solid rgba(192,57,43,.25);
+            border-radius: 5px; padding: .8rem 1rem; font-size: .88rem; color: var(--accent);
+            margin-bottom: 1.4rem; display: flex; align-items: center; gap: .5rem;
         }
 
-        /* ── Fields ── */
         .field { margin-bottom: 1.5rem; }
 
-        label {
-            display: block;
-            font-size: .78rem;
-            font-weight: 600;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            color: var(--muted);
-            margin-bottom: .5rem;
-        }
+        label { display: block; font-size: .78rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: .5rem; }
 
-        input[type="text"], textarea {
-            width: 100%;
-            font-family: 'DM Sans', sans-serif;
-            font-size: .95rem;
-            color: var(--ink);
-            background: var(--input-bg);
-            border: 1.5px solid var(--line);
-            border-radius: 6px;
-            padding: .85rem 1rem;
-            outline: none;
-            transition: border-color .2s, box-shadow .2s, background .3s, color .3s;
-            resize: none;
+        input[type="text"], textarea, select {
+            width: 100%; background: var(--input-bg); border: 1.5px solid var(--line);
+            border-radius: 5px; padding: .75rem 1rem; font-family: 'DM Sans', sans-serif;
+            font-size: .95rem; color: var(--ink); outline: none; transition: border-color .2s, background .3s;
         }
-        input[type="text"]:focus, textarea:focus {
-            border-color: var(--accent);
-            background: var(--card-bg);
-            box-shadow: 0 0 0 3px rgba(192,57,43,.1);
-        }
-        textarea { min-height: 200px; line-height: 1.7; }
+        input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+        textarea { min-height: 200px; resize: vertical; line-height: 1.65; }
 
-        .field-meta { display: flex; justify-content: flex-end; margin-top: .35rem; }
-        .char-count { font-size: .73rem; color: var(--muted); }
+        .field-meta { display: flex; justify-content: flex-end; margin-top: .3rem; }
+        .char-count { font-size: .72rem; color: var(--muted); }
 
-        /* ── Mood picker ── */
-        .mood-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: .6rem;
-        }
+        .mood-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: .6rem; }
         .mood-option { display: none; }
         .mood-label {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: .3rem;
-            padding: .75rem .5rem;
-            border: 2px solid var(--line);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: border-color .2s, background .2s, transform .15s;
-            background: var(--input-bg);
-            user-select: none;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: .3rem; padding: .75rem .5rem; border: 2px solid var(--line); border-radius: 8px;
+            cursor: pointer; transition: border-color .2s, background .2s, transform .15s;
+            background: var(--input-bg); user-select: none;
         }
         .mood-label:hover { transform: translateY(-2px); }
         .mood-emoji-lg { font-size: 1.5rem; line-height: 1; }
-        .mood-text {
-            font-size: .7rem;
-            font-weight: 600;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-            color: var(--muted);
-            transition: color .2s;
-        }
+        .mood-text { font-size: .7rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); transition: color .2s; }
 
-        /* ── Buttons ── */
         .actions { display: flex; gap: .75rem; margin-top: 2rem; }
 
         .btn-save {
-            flex: 1;
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            padding: .9rem 1.5rem;
-            font-family: 'DM Sans', sans-serif;
-            font-size: .85rem;
-            font-weight: 500;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: background .2s, transform .15s;
+            flex: 1; background: var(--accent); color: #fff; border: none; border-radius: 5px;
+            padding: .9rem 1.5rem; font-family: 'DM Sans', sans-serif; font-size: .85rem;
+            font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+            cursor: pointer; transition: background .2s, transform .15s;
         }
         .btn-save:hover { background: #a93226; transform: translateY(-1px); }
 
         .btn-cancel {
-            flex: 1;
-            background: transparent;
-            color: var(--muted);
-            border: 1.5px solid var(--line);
-            border-radius: 5px;
-            padding: .9rem 1.5rem;
-            font-family: 'DM Sans', sans-serif;
-            font-size: .85rem;
-            font-weight: 500;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            text-decoration: none;
-            text-align: center;
-            transition: border-color .2s, color .2s;
+            flex: 1; background: transparent; color: var(--muted); border: 1.5px solid var(--line);
+            border-radius: 5px; padding: .9rem 1.5rem; font-family: 'DM Sans', sans-serif;
+            font-size: .85rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+            text-decoration: none; text-align: center; transition: border-color .2s, color .2s;
         }
         .btn-cancel:hover { border-color: var(--ink); color: var(--ink); }
 
@@ -330,6 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .card-inner { padding: 1.6rem 1.4rem 1.4rem; }
             .form-heading { font-size: 1.35rem; }
             .actions { flex-direction: column; }
+            .mood-grid { grid-template-columns: repeat(3, 1fr); }
         }
     </style>
 </head>
@@ -380,25 +239,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <form action="create.php" method="POST">
 
-                <!-- Title -->
                 <div class="field">
                     <label for="title">Title</label>
-                    <input
-                        type="text"
-                        id="title"
-                        name="title"
-                        placeholder="Enter Here"
-                        required
-                        maxlength="200"
-                        autofocus
-                        oninput="updateCount('tc', this.value.length, 200)"
-                    >
-                    <div class="field-meta">
-                        <span class="char-count" id="tc">0/200</span>
-                    </div>
+                    <input type="text" id="title" name="title" placeholder="Enter Here" required maxlength="200" autofocus oninput="updateCount('tc', this.value.length, 200)">
+                    <div class="field-meta"><span class="char-count" id="tc">0/200</span></div>
                 </div>
 
-                <!-- Mood picker -->
                 <div class="field">
                     <label>How are you feeling?</label>
                     <div class="mood-grid">
@@ -416,20 +262,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <!-- Content -->
                 <div class="field">
                     <label for="content">Content</label>
-                    <textarea
-                        id="content"
-                        name="content"
-                        placeholder="Write your thoughts here"
-                        required
-                        maxlength="5000"
-                        oninput="autoResize(this); updateCount('cc', this.value.length, 5000)"
-                    ></textarea>
-                    <div class="field-meta">
-                        <span class="char-count" id="cc">0/5000</span>
-                    </div>
+                    <textarea id="content" name="content" placeholder="Write your thoughts here" required maxlength="5000" oninput="autoResize(this); updateCount('cc', this.value.length, 5000)"></textarea>
+                    <div class="field-meta"><span class="char-count" id="cc">0/5000</span></div>
                 </div>
 
                 <div class="actions">
@@ -443,7 +279,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </main>
 
 <script>
-    // ── Dark mode ─────────────────────────────────────────
     const html   = document.documentElement;
     const toggle = document.getElementById('themeToggle');
     html.setAttribute('data-theme', localStorage.getItem('journal-theme') || 'light');
@@ -453,7 +288,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         localStorage.setItem('journal-theme', next);
     });
 
-    // ── Mood highlight ────────────────────────────────────
     function applyMoodStyles() {
         document.querySelectorAll('.mood-option').forEach(radio => {
             const label = radio.nextElementSibling;
@@ -472,7 +306,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     document.querySelectorAll('.mood-option').forEach(r => r.addEventListener('change', applyMoodStyles));
     applyMoodStyles();
 
-    // ── Helpers ───────────────────────────────────────────
     function updateCount(id, len, max) {
         const el = document.getElementById(id);
         el.textContent = len + '/' + max;
